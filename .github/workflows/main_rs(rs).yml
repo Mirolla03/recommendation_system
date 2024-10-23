@@ -77,5 +77,5 @@ jobs:
         id: deploy-to-webapp
         with:
           app-name: 'rs'
-          slot-name: ''
+          slot-name: 'rs'
           
