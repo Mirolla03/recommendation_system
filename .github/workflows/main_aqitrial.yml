@@ -1,8 +1,4 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
-
-name: Build and deploy Python app to Azure Web App- AQITrial
+name: Build and deploy Python app to Azure Web App - AQITrial
 
 on:
   push:
@@ -29,8 +25,11 @@ jobs:
       
       - name: Install dependencies
         run: pip install -r requirements.txt
-        
-      # Optional: Add step to run tests here (PyTest, Django test suites, etc.)
+
+      - name: Run tests
+        run: |
+          source venv/bin/activate
+          python -m unittest discover -s tests
 
       - name: Zip artifact for deployment
         run: zip release.zip ./* -r
@@ -50,7 +49,7 @@ jobs:
       name: 'Production'
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     permissions:
-      id-token: write #This is required for requesting the JWT
+      id-token: write # This is required for requesting the JWT
 
     steps:
       - name: Download artifact from build job
@@ -61,13 +60,12 @@ jobs:
       - name: Unzip artifact for deployment
         run: unzip release.zip
 
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_087E0AB2119543D880F227EB02C7BD4A }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_37E044B8C16C4DB48FA2510C53017353 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_9655D91EAB434F26BED6BC4F404AA04A }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID }}
 
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
@@ -75,4 +73,6 @@ jobs:
         with:
           app-name: 'AQITrial'
           slot-name: 'Production'
-          
+
+      - name: Clean up
+        run: rm -rf venv release.zip
