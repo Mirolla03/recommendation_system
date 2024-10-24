@@ -87,10 +87,9 @@ def calculate_similarity_in_chunks(matrix, chunk_size=8000):
 # Usage
 chunk_size = 1000  # Adjust based on your RAM
 cosine_sim = calculate_similarity_in_chunks(sample_genres, chunk_size)
-extract_path = r"B:\GP\models\cosine"
 
 
-movies = pd.read_csv('B:\GP\data\movies.csv')  # Load your movies DataFrame
+movies = pd.read_csv('data/movies.csv')  # Load your movies DataFrame
 
 
 # Load the models
@@ -98,13 +97,13 @@ movies = pd.read_csv('B:\GP\data\movies.csv')  # Load your movies DataFrame
 @st.cache_resource
 def load_trained_models():
     # Load the generator model for GAN
-    generator_model = tf.keras.models.load_model(r'B:\GP\models\gan_generator_model.h5')
+    generator_model = tf.keras.models.load_model(r'models/gan_generator_model.h5')
     
     # Load the discriminator model (if needed)
-    discriminator_model = tf.keras.models.load_model(r'B:\GP\models\gan_discriminator_model.h5')
+    discriminator_model = tf.keras.models.load_model(r'models/gan_discriminator_model.h5')
     
     # Load the SVD model using joblib
-    svd_model = joblib.load(r'B:\GP\models\svdpp.pkl')
+    svd_model = joblib.load(r'models/svdpp.pkl')
 
     return generator_model, discriminator_model#, svd_model
 
@@ -225,6 +224,7 @@ def main():
                 # Log recommendations as artifacts
                 mlflow.log_artifact("Content Recommendations", content_recommendations)
                 mlflow.log_artifact("GAN Recommendations", gan_recommendations)
+                mlflow.log_artifact("Collaborative filtering Recommendations", svd_recommendations)
 
             else:
                 st.write("Please provide both your favorite movie and genres.")
