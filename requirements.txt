@@ -5,3 +5,6 @@ scikit-learn
 mlflow
 tensorflow-intel
 scikit-surprise
+tensorflow
+joblib
+fuzzywuzzy
