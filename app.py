@@ -9,17 +9,87 @@ import mlflow.tensorflow
 import mlflow.pyfunc
 import zipfile
 import os
+from sklearn.metrics.pairwise import cosine_similarity
+import gc
+import psutil
+
+def get_svdpp_recommendations(user_id, model, rating_df, movies_df, top_n=5):
+    """
+    Recommends top N movies for a specific user using the SVDpp model.
+
+    :param user_id: ID of the user
+    :param model: Trained SVDpp model
+    :param rating_df: DataFrame containing userId, movieId, and rating
+    :param movies_df: DataFrame containing movieId and title
+    :param top_n: Number of movies to recommend (default: 10)
+    :return: List of top N recommended movie titles
+    """
+    # Get all movie ids from the movies DataFrame
+    all_movie_ids = movies_df['movieId'].unique()  # Ensure 'movieId' is correct
+
+    # Get the list of movies that the user has already rated
+    watched_movie_ids = rating_df[rating_df['userId'] == user_id]['movieId'].unique()
+
+    # Find movies the user hasn't watched yet
+    not_watched_ids = [mid for mid in all_movie_ids if mid not in watched_movie_ids]
+
+    # Predict ratings for all unwatched movies
+    predicted_ratings = [model.predict(user_id, mid) for mid in not_watched_ids]
+
+    # Sort movies by predicted rating in descending order
+    predicted_ratings.sort(key=lambda x: x.est, reverse=True)
+
+    # Get the top N movie ids
+    top_movie_ids = [pred.iid for pred in predicted_ratings[:top_n]]
+
+    # Return the movie titles for the top N recommendations
+    recommended_titles = movies_df[movies_df['movieId'].isin(top_movie_ids)]['title'].tolist()
+
+
+    return list(set(recommended_titles))
+
+
+
+def calculate_similarity_in_chunks(matrix, chunk_size=8000):
+    n_samples = matrix.shape[0]
+    n_chunks = (n_samples // chunk_size) + 1
+    similarities = np.zeros((n_samples, n_samples))
+
+    def get_memory_usage():
+        return psutil.Process().memory_info().rss / 1024 / 1024  # MB
+
+    initial_memory = get_memory_usage()
+
+    for i in range(n_chunks):
+        start_i = i * chunk_size
+        end_i = min(start_i + chunk_size, n_samples)
+
+        if end_i - start_i > 0:
+          chunk_similarities = cosine_similarity( matrix[start_i:end_i], matrix )
+
+          similarities[start_i:end_i] = chunk_similarities
+
+          # Free memory
+          del chunk_similarities
+          gc.collect()
+
+          # Progress and memory tracking
+          current_memory = get_memory_usage()
+          print(f"Chunk {i+1}/{n_chunks} complete. "
+                f"Progress: {end_i}/{n_samples} rows. "
+                f"Memory usage: {current_memory:.2f} MB "
+                f"(Δ: {current_memory - initial_memory:.2f} MB)")
+        else:
+            print(f"Chunk {i+1}/{n_chunks} is empty, skipping...")
+
+    return similarities
+
+# Usage
+chunk_size = 1000  # Adjust based on your RAM
+cosine_sim = calculate_similarity_in_chunks(sample_genres, chunk_size)
 extract_path = r"B:\GP\models\cosine"
 
-# Assuming the file is named 'cosine_similarity.npy' after extraction
-cosine_sim_path = os.path.join(extract_path, 'arr_0.npy')
 
-# Load the similarity matrix
-cosine_sim = np.load(cosine_sim_path)
-
-
-# Load the cosine similarity matrix
-cosine_sim = np.load('cosine_similarity.npy')
 movies = pd.read_csv('B:\GP\data\movies.csv')  # Load your movies DataFrame
 
 
@@ -34,10 +104,7 @@ def load_trained_models():
     discriminator_model = tf.keras.models.load_model(r'B:\GP\models\gan_discriminator_model.h5')
     
     # Load the SVD model using joblib
-    #svd_model = joblib.load(r'B:\GP\models\svdpp.pkl')
-    
-    #content_model = ...  # Load your content-based model
-
+    svd_model = joblib.load(r'B:\GP\models\svdpp.pkl')
 
     return generator_model, discriminator_model#, svd_model
 
@@ -142,13 +209,13 @@ def main():
                 st.write(f"Your favorite genres are: {', '.join(genres)}")
 
                 # Call recommendation functions
-                #svd_recommendations = get_svd_recommendations(user_id, svd_model)  # Collaborative filtering
+                svd_recommendations = get_svd_recommendations(user_id, svd_model)  # Collaborative filtering
                 content_recommendations = get_content_based_recommendations(fav_movie, genres)
                 gan_recommendations = get_gan_recommendations(generator_model, movies_df=df)
 
                 # Display results
-                # st.subheader("Collaborative Filtering Recommendations")
-                # st.write(svd_recommendations)
+                 st.subheader("Collaborative Filtering Recommendations")
+                 st.write(svd_recommendations)
                 st.subheader("Content-Based Filtering Recommendations")
                 st.write(content_recommendations)
 
