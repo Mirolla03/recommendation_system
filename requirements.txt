@@ -8,3 +8,4 @@ scikit-surprise
 tensorflow
 joblib
 fuzzywuzzy
+psutil
