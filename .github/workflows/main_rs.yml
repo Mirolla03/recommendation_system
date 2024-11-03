@@ -7,7 +7,7 @@ name: Build and deploy Python app to Azure Web App - RS
 on:
   push:
     branches:
-      - main
+       - non-existing-branch
   workflow_dispatch:
 
 jobs:
